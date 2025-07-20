@@ -1,7 +1,7 @@
 package main
 
 import (
-	"localhost/aireview/cmd"
+	"github.com/disconnekt/goreview/cmd"
 )
 
 func main() {

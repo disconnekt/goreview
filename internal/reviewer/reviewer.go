@@ -7,46 +7,37 @@ import (
 	"fmt"
 	"net/http"
 
-	"localhost/aireview/internal/config"
+	"github.com/disconnekt/goreview/internal/config"
 )
 
-// ReviewRequest represents the API request structure
 type ReviewRequest struct {
 	Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
 }
-
-// Message represents a chat message
 type Message struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-// ReviewResponse represents the API response structure
 type ReviewResponse struct {
 	Choices []Choice  `json:"choices"`
 	Error   *APIError `json:"error,omitempty"`
 }
 
-// Choice represents a response choice
 type Choice struct {
 	Message Message `json:"message"`
 }
-
-// APIError represents an API error
 type APIError struct {
 	Message string `json:"message"`
 	Type    string `json:"type"`
 	Code    string `json:"code"`
 }
 
-// Service handles code review operations
 type Service struct {
 	config *config.Config
 	client *http.Client
 }
 
-// NewService creates a new reviewer service
 func NewService(cfg *config.Config) *Service {
 	return &Service{
 		config: cfg,
@@ -56,7 +47,6 @@ func NewService(cfg *config.Config) *Service {
 	}
 }
 
-// ReviewCode analyzes code using AI API
 func (s *Service) ReviewCode(ctx context.Context, code string) (string, error) {
 	if len(code) > int(s.config.MaxFileSize) {
 		return "", fmt.Errorf("file size exceeds maximum allowed size of %d bytes", s.config.MaxFileSize)
@@ -89,7 +79,6 @@ func (s *Service) ReviewCode(ctx context.Context, code string) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "aireview/1.0")
 	
-	// Add API key if provided
 	if s.config.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+s.config.APIKey)
 	}
@@ -101,7 +90,6 @@ func (s *Service) ReviewCode(ctx context.Context, code string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		// Provide more helpful error messages for common HTTP status codes
 		switch resp.StatusCode {
 		case http.StatusUnauthorized:
 			return "", fmt.Errorf("authentication failed (401): check your API key")
@@ -134,7 +122,6 @@ func (s *Service) ReviewCode(ctx context.Context, code string) (string, error) {
 	return reviewResponse.Choices[0].Message.Content, nil
 }
 
-// getSystemPrompt returns the system prompt for code review
 func (s *Service) getSystemPrompt() string {
 	return `You are a very experienced senior developer. Analyze the following code and provide recommendations on:
 - Security vulnerabilities and best practices

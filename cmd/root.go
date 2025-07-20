@@ -7,14 +7,13 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
-	"localhost/aireview/internal/config"
-	"localhost/aireview/internal/reviewer"
-	"localhost/aireview/internal/scanner"
+	"github.com/disconnekt/goreview/internal/config"
+	"github.com/disconnekt/goreview/internal/reviewer"
+	"github.com/disconnekt/goreview/internal/scanner"
 )
 
 var cfg *config.Config
 
-// rootCmd represents the base command
 var rootCmd = &cobra.Command{
 	Use:   "aireview",
 	Short: "AI-powered code review tool for Go projects",
@@ -23,7 +22,6 @@ and provides intelligent code review suggestions using AI.`,
 	RunE: runReview,
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -49,29 +47,24 @@ func init() {
 }
 
 func runReview(cmd *cobra.Command, args []string) error {
-	// Check for API key in environment variable if not provided via flag
 	if cfg.APIKey == "" {
 		if envKey := os.Getenv("AIREVIEW_API_KEY"); envKey != "" {
 			cfg.APIKey = envKey
 		}
 	}
 	
-	// Warn if API key might be required but not provided
 	if cfg.RequiresAPIKey() && cfg.APIKey == "" {
 		fmt.Fprintf(os.Stderr, "Warning: This API endpoint (%s) likely requires an API key.\n", cfg.APIURL)
 		fmt.Fprintf(os.Stderr, "Use --api-key flag or set AIREVIEW_API_KEY environment variable.\n\n")
 	}
 
-	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("configuration error: %w", err)
 	}
 
-	// Initialize services
 	fileScanner := scanner.NewScanner(cfg.MaxFileSize)
 	reviewService := reviewer.NewService(cfg)
 
-	// Scan for Go files
 	fmt.Printf("Scanning directory: %s\n", cfg.ProjectPath)
 	files, err := fileScanner.ScanGoFiles(cfg.ProjectPath)
 	if err != nil {
@@ -85,14 +78,12 @@ func runReview(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Found %d Go files to review\n", len(files))
 
-	// Process files concurrently with limited concurrency
 	return processFilesWithConcurrency(reviewService, files, cfg.MaxConcurrency)
 }
 
 func processFilesWithConcurrency(reviewService *reviewer.Service, files []scanner.FileInfo, maxConcurrency int) error {
 	ctx := context.Background()
 	
-	// Create a semaphore to limit concurrency
 	semaphore := make(chan struct{}, maxConcurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -103,7 +94,6 @@ func processFilesWithConcurrency(reviewService *reviewer.Service, files []scanne
 		go func(f scanner.FileInfo) {
 			defer wg.Done()
 			
-			// Acquire semaphore
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 
@@ -129,7 +119,6 @@ func processFilesWithConcurrency(reviewService *reviewer.Service, files []scanne
 
 	wg.Wait()
 
-	// Report any errors
 	if len(errors) > 0 {
 		fmt.Fprintf(os.Stderr, "\nEncountered %d errors during review:\n", len(errors))
 		for _, err := range errors {

@@ -1,4 +1,4 @@
-module localhost/aireview
+module github.com/disconnekt/goreview
 
 go 1.21
 

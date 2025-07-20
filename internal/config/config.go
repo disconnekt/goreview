@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// Config holds application configuration
 type Config struct {
 	ProjectPath    string
 	APIURL         string
@@ -17,7 +16,6 @@ type Config struct {
 	MaxConcurrency int
 }
 
-// DefaultConfig returns default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		ProjectPath:    ".",
@@ -29,7 +27,6 @@ func DefaultConfig() *Config {
 	}
 }
 
-// Validate validates configuration
 func (c *Config) Validate() error {
 	if c.APIURL == "" {
 		return errors.New("API URL cannot be empty")
@@ -43,13 +40,11 @@ func (c *Config) Validate() error {
 	if c.RequestTimeout <= 0 {
 		return errors.New("request timeout must be positive")
 	}
-	// API key is optional - needed for online services but not for local models
+
 	return nil
 }
 
-// RequiresAPIKey checks if the API endpoint likely requires authentication
 func (c *Config) RequiresAPIKey() bool {
-	// Check if URL contains common online AI service domains
 	onlineServices := []string{
 		"api.openai.com",
 		"openai.azure.com",
