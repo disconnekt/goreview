@@ -35,6 +35,15 @@ go build -o aireview .
   --concurrency 5
 ```
 
+```bash
+# Multiple local LM Studio hosts (round-robin + failover)
+./aireview \
+  --path ./my-project \
+  --model llama2 \
+  --urls http://127.0.0.1:1234/v1/chat/completions,http://127.0.0.1:1235/v1/chat/completions \
+  --concurrency 8
+```
+
 ### Using environment variables (recommended for API keys)
 ```bash
 export AIREVIEW_API_KEY="sk-your-openai-key"
@@ -45,10 +54,11 @@ export AIREVIEW_API_KEY="sk-your-openai-key"
 
 - `--path, -p`: Path to the project directory for review (default: ".")
 - `--url, -u`: URL to the AI API endpoint (default: "http://127.0.0.1:1234/v1/chat/completions")
+- `--urls`: Comma-separated list of AI API endpoints (overrides `--url`), used in round-robin for parallelism and automatic failover
 - `--api-key, -k`: API key for authentication (can also use AIREVIEW_API_KEY env var)
 - `--model, -m`: AI model to use for code review (default: "devstral-small-2507-mlx")
-- `--max-size`: Maximum file size in bytes to process (default: 1048576)
-- `--concurrency, -c`: Maximum number of concurrent reviews (default: 3)
+- `--max-size`: Maximum file size in bytes to process (default: 10485760)
+- `--concurrency, -c`: Maximum number of concurrent reviews (default: 10)
 
 ## Architecture
 
@@ -148,10 +158,21 @@ rate limit exceeded (429): too many requests, please wait and try again
 ```bash
 # LM Studio, Ollama, or other local servers
 ./aireview --model llama2 --url http://localhost:1234/v1/chat/completions
+
+# Multiple LM Studio hosts (round-robin across endpoints)
+./aireview --model llama2 \
+  --urls http://localhost:1234/v1/chat/completions,http://localhost:1235/v1/chat/completions \
+  --concurrency 8
 ```
 
 ### Performance Tips
 
+- **Balance concurrency with hosts**: For multiple local hosts, set `--concurrency` around `hosts × cores_per_host` for good throughput
 - **Reduce concurrency** for rate-limited APIs: `--concurrency 1`
 - **Limit file size** for faster processing: `--max-size 512000` (500KB)
 - **Use environment variables** for API keys to avoid exposing them in command history
+
+### Multi-host behavior
+
+- **Round-robin dispatch**: Each review request is sent to the next endpoint in `--urls`.
+- **Automatic failover**: If an endpoint returns an error or is unavailable, the tool retries the request on the next endpoint until one succeeds or all fail.

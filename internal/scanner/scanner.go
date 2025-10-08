@@ -53,6 +53,12 @@ func (s *Scanner) ScanGoFiles(dirPath string) ([]FileInfo, error) {
 		if strings.HasSuffix(info.Name(), "_test.go") {
 			return nil
 		}
+
+		// Skip generated files that may cause API issues
+		if s.isGeneratedFile(path, info.Name()) {
+			fmt.Printf("Skipping generated file: %s\n", path)
+			return nil
+		}
 		if info.Size() > s.maxFileSize {
 			fmt.Printf("Warning: Skipping file %s (size %d exceeds limit %d)\n",
 				path, info.Size(), s.maxFileSize)
@@ -78,16 +84,22 @@ func (s *Scanner) ScanGoFiles(dirPath string) ([]FileInfo, error) {
 
 func (s *Scanner) shouldSkipDir(dirName string) bool {
 	skipDirs := []string{
-		"vendor",
 		".git",
+		".svn",
+		".hg",
+		"node_modules",
+		"vendor",
 		".vscode",
 		".idea",
-		"node_modules",
 		"build",
 		"dist",
+		"target",
 		"bin",
+		"obj",
 		"tmp",
-		".tmp",
+		"temp",
+		".DS_Store",
+		"Thumbs.db",
 	}
 
 	for _, skip := range skipDirs {
@@ -95,5 +107,25 @@ func (s *Scanner) shouldSkipDir(dirName string) bool {
 			return true
 		}
 	}
+	return false
+}
+
+// isGeneratedFile checks if a file is auto-generated and should be skipped
+func (s *Scanner) isGeneratedFile(filePath, fileName string) bool {
+	// Skip protobuf generated files
+	if strings.HasSuffix(fileName, ".pb.go") {
+		return true
+	}
+	
+	// Skip other common generated files
+	if strings.HasSuffix(fileName, "_generated.go") {
+		return true
+	}
+	
+	// Check for generated file markers in the file content
+	if strings.Contains(filePath, "/generated/") {
+		return true
+	}
+	
 	return false
 }

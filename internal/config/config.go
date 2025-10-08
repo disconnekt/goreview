@@ -9,6 +9,9 @@ import (
 type Config struct {
 	ProjectPath    string
 	APIURL         string
+	// APIURLs allows specifying multiple OpenAI-compatible endpoints.
+	// If provided, these take precedence over APIURL and will be used in a round-robin fashion.
+	APIURLs        []string
 	APIKey         string
 	Model          string
 	MaxFileSize    int64
@@ -21,15 +24,21 @@ func DefaultConfig() *Config {
 		ProjectPath:    ".",
 		APIURL:         "http://127.0.0.1:1234/v1/chat/completions",
 		Model:          "devstral-small-2507-mlx",
-		MaxFileSize:    1024 * 1024, // 1MB
-		RequestTimeout: 30 * time.Second,
-		MaxConcurrency: 3,
+		MaxFileSize:    10 * 1024 * 1024, // 10MB
+		RequestTimeout: 720 * time.Second,
+		MaxConcurrency: 10,
 	}
 }
 
 func (c *Config) Validate() error {
-	if c.APIURL == "" {
-		return errors.New("API URL cannot be empty")
+	urlList := c.EffectiveAPIURLs()
+	if len(urlList) == 0 {
+		return errors.New("at least one API URL must be provided")
+	}
+	for _, u := range urlList {
+		if strings.TrimSpace(u) == "" {
+			return errors.New("API URL cannot be empty")
+		}
 	}
 	if c.Model == "" {
 		return errors.New("model cannot be empty")
@@ -44,6 +53,18 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+// EffectiveAPIURLs returns the list of API URLs to use. If APIURLs is set,
+// it takes precedence; otherwise, it falls back to the single APIURL value.
+func (c *Config) EffectiveAPIURLs() []string {
+	if len(c.APIURLs) > 0 {
+		return c.APIURLs
+	}
+	if strings.TrimSpace(c.APIURL) != "" {
+		return []string{c.APIURL}
+	}
+	return nil
+}
+
 func (c *Config) RequiresAPIKey() bool {
 	onlineServices := []string{
 		"api.openai.com",
@@ -51,10 +72,13 @@ func (c *Config) RequiresAPIKey() bool {
 		"api.anthropic.com",
 		"generativelanguage.googleapis.com",
 	}
-	
-	for _, service := range onlineServices {
-		if strings.Contains(c.APIURL, service) {
-			return true
+
+	urlList := c.EffectiveAPIURLs()
+	for _, url := range urlList {
+		for _, service := range onlineServices {
+			if strings.Contains(url, service) {
+				return true
+			}
 		}
 	}
 	return false

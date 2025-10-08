@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/disconnekt/goreview/internal/config"
@@ -36,6 +37,9 @@ func init() {
 		"Path to the project directory for review")
 	rootCmd.Flags().StringVarP(&cfg.APIURL, "url", "u", cfg.APIURL, 
 		"URL to the AI API endpoint")
+	// Multiple endpoints override single --url. Accepts comma-separated values or repeated flags.
+	rootCmd.Flags().StringSliceVar(&cfg.APIURLs, "urls", nil, 
+		"Comma-separated list of AI API endpoints (overrides --url)")
 	rootCmd.Flags().StringVarP(&cfg.APIKey, "api-key", "k", cfg.APIKey, 
 		"API key for authentication (can also use AIREVIEW_API_KEY env var)")
 	rootCmd.Flags().StringVarP(&cfg.Model, "model", "m", cfg.Model, 
@@ -54,7 +58,8 @@ func runReview(cmd *cobra.Command, args []string) error {
 	}
 	
 	if cfg.RequiresAPIKey() && cfg.APIKey == "" {
-		fmt.Fprintf(os.Stderr, "Warning: This API endpoint (%s) likely requires an API key.\n", cfg.APIURL)
+		endpoints := strings.Join(cfg.EffectiveAPIURLs(), ", ")
+		fmt.Fprintf(os.Stderr, "Warning: One or more API endpoints (%s) likely require an API key.\n", endpoints)
 		fmt.Fprintf(os.Stderr, "Use --api-key flag or set AIREVIEW_API_KEY environment variable.\n\n")
 	}
 
@@ -66,6 +71,12 @@ func runReview(cmd *cobra.Command, args []string) error {
 	reviewService := reviewer.NewService(cfg)
 
 	fmt.Printf("Scanning directory: %s\n", cfg.ProjectPath)
+	urls := cfg.EffectiveAPIURLs()
+	if len(urls) > 1 {
+		fmt.Printf("Using %d AI endpoints (round-robin): %s\n", len(urls), strings.Join(urls, ", "))
+	} else if len(urls) == 1 {
+		fmt.Printf("Using AI endpoint: %s\n", urls[0])
+	}
 	files, err := fileScanner.ScanGoFiles(cfg.ProjectPath)
 	if err != nil {
 		return fmt.Errorf("failed to scan files: %w", err)
