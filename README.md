@@ -44,6 +44,14 @@ go build -o aireview .
   --concurrency 8
 ```
 
+### Write report to a file
+
+To keep logs on stdout/stderr and write the review content to a file:
+
+```bash
+./aireview --path ./my-project --report-file ./review.md
+```
+
 ### Using environment variables (recommended for API keys)
 ```bash
 export AIREVIEW_API_KEY="sk-your-openai-key"
@@ -59,6 +67,7 @@ export AIREVIEW_API_KEY="sk-your-openai-key"
 - `--model, -m`: AI model to use for code review (default: "devstral-small-2507-mlx")
 - `--max-size`: Maximum file size in bytes to process (default: 10485760)
 - `--concurrency, -c`: Maximum number of concurrent reviews (default: 10)
+- `--report-file`: Path to write the review report (Markdown). If empty, the report is printed to stdout.
 
 ## Architecture
 
@@ -136,7 +145,7 @@ authentication failed (401): check your API key
 ```
 rate limit exceeded (429): too many requests, please wait and try again
 ```
-- **Solution**: Reduce `--concurrency` parameter (default: 3)
+- **Solution**: Reduce `--concurrency` parameter (default: 10)
 - **Wait**: Rate limits reset over time, try again later
 - **Upgrade**: Consider upgrading your OpenAI plan for higher limits
 

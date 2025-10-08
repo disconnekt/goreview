@@ -17,6 +17,9 @@ type Config struct {
 	MaxFileSize    int64
 	RequestTimeout time.Duration
 	MaxConcurrency int
+	// ReportFile, if set, writes the review content (without logs) to the given file.
+	// When empty, the review content is printed to stdout as before.
+	ReportFile     string
 }
 
 func DefaultConfig() *Config {
